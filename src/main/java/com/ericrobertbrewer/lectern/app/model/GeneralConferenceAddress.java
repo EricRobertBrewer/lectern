@@ -1,49 +1,72 @@
 package com.ericrobertbrewer.lectern.app.model;
 
-import com.ericrobertbrewer.lectern.db.DatabaseHelper;
+import com.ericrobertbrewer.lectern.Namespaces;
+import com.ericrobertbrewer.lectern.db.DatabaseUtils;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GeneralConferenceAddress implements DatabaseTable {
 
-  public static final String TABLE_GENERAL_CONFERENCE_ADDRESS = "GeneralConferenceAddress";
-  public static final String CREATE_STMT = "CREATE TABLE IF NOT EXISTS " + TABLE_GENERAL_CONFERENCE_ADDRESS + " (" +
-    "conference TEXT NOT NULL" + // 2022-04
-    ", ordinal INTEGER NOT NULL" + // 0
-    ", session TEXT NOT NULL" + // Saturday Morning Session
-    ", speaker TEXT DEFAULT NULL" + // Russell M. Nelson
-    ", title TEXT NOT NULL" + // Preaching the Gospel of Peace
-    ", description TEXT DEFAULT NULL" + // President Nelson teaches that we must stand in holy places...
-    ", role TEXT DEFAULT NULL" + // President of the Church of Jesus Christ of Latter-day Saints
-    ", kicker TEXT DEFAULT NULL" + // We have the sacred responsibility to share the power and peace of...
-    ", url TEXT NOT NULL" + // https://www.churchofjesuschrist.org/study/general-conference/2022/04/11nelson...
-    ", filename_html TEXT DEFAULT NULL" + // 11nelson.html
-    ", filename_text TEXT DEFAULT NULL" + // 11nelson.txt
-    ", category TEXT DEFAULT NULL" + // (instruction|sustaining|auditing|video|...)
-    ", PRIMARY KEY (conference, ordinal)" +
-    ");";
+  public static final String CREATE_STMT =
+    "CREATE TABLE IF NOT EXISTS " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS + " (" +
+      "conference TEXT NOT NULL" + // 2022-04
+      ", ordinal INTEGER NOT NULL" + // 0
+      ", session TEXT NOT NULL" + // Saturday Morning Session
+      ", speaker TEXT DEFAULT NULL" + // Russell M. Nelson
+      ", title TEXT NOT NULL" + // Preaching the Gospel of Peace
+      ", description TEXT DEFAULT NULL" + // President Nelson teaches that we must stand in holy places...
+      ", role TEXT DEFAULT NULL" + // President of the Church of Jesus Christ of Latter-day Saints
+      ", kicker TEXT DEFAULT NULL" + // We have the sacred responsibility to share the power and peace of...
+      ", url TEXT NOT NULL" + // https://www.churchofjesuschrist.org/study/general-conference/2022/04/11nelson...
+      ", filename TEXT NOT NULL" + // 11nelson
+      ", category TEXT DEFAULT NULL" + // (instruction|sustaining|auditing|video|...)
+      ", PRIMARY KEY (conference, ordinal)" +
+      ");";
 
   private final String conference;
   private final int ordinal;
-  private String session;
+  private final String session;
   private String speaker;
-  private String title;
+  private final String title;
   private String description;
   private String role;
   private String kicker;
-  private String url;
-  private String filenameHtml;
-  private String filenameText;
+  private final String url;
+  private final String filename;
   private String category;
 
-  public GeneralConferenceAddress(String conference, int ordinal, String session, String title, String url) {
+  public GeneralConferenceAddress(
+    String conference,
+    int ordinal,
+    String session,
+    String title,
+    String url,
+    String filename
+  ) {
     this.conference = conference;
     this.ordinal = ordinal;
     this.session = session;
     this.title = title;
     this.url = url;
+    this.filename = filename;
+  }
+
+  private GeneralConferenceAddress(ResultSet result) throws SQLException {
+    this(
+      result.getString("conference"),
+      result.getInt("ordinal"),
+      result.getString("session"),
+      result.getString("title"),
+      result.getString("url"),
+      result.getString("filename")
+    );
+    setSpeaker(result.getString("speaker"));
+    setDescription(result.getString("description"));
+    setRole(result.getString("role"));
+    setKicker(result.getString("kicker"));
+    setCategory(result.getString("category"));
   }
 
   public String getConference() {
@@ -58,24 +81,19 @@ public class GeneralConferenceAddress implements DatabaseTable {
     return session;
   }
 
-  public void setSession(String session) {
-    this.session = session;
-  }
-
   public String getSpeaker() {
     return speaker;
   }
 
   public void setSpeaker(String speaker) {
-    this.speaker = speaker;
+    // Video: https://www.churchofjesuschrist.org/study/general-conference/2020/10?lang=eng
+    if (speaker == null || speaker.trim().length() > 0) {
+      this.speaker = speaker;
+    }
   }
 
   public String getTitle() {
     return title;
-  }
-
-  public void setTitle(String title) {
-    this.title = title;
   }
 
   public String getDescription() {
@@ -91,7 +109,10 @@ public class GeneralConferenceAddress implements DatabaseTable {
   }
 
   public void setRole(String role) {
-    this.role = role;
+    // https://www.churchofjesuschrist.org/study/general-conference/2018/04/ministering?lang=eng
+    if (role == null || role.trim().length() > 0) {
+      this.role = role;
+    }
   }
 
   public String getKicker() {
@@ -106,24 +127,8 @@ public class GeneralConferenceAddress implements DatabaseTable {
     return url;
   }
 
-  public void setUrl(String url) {
-    this.url = url;
-  }
-
-  public String getFilenameHtml() {
-    return filenameHtml;
-  }
-
-  public void setFilenameHtml(String filenameHtml) {
-    this.filenameHtml = filenameHtml;
-  }
-
-  public String getFilenameText() {
-    return filenameText;
-  }
-
-  public void setFilenameText(String filenameText) {
-    this.filenameText = filenameText;
+  public String getFilename() {
+    return filename;
   }
 
   public String getCategory() {
@@ -135,36 +140,63 @@ public class GeneralConferenceAddress implements DatabaseTable {
   }
 
   @Override
+  public String getPrimaryKey() {
+    return getConference() + ":" + getOrdinal();
+  }
+
+  @Override
   public int insertOrReplace(Connection connection) throws SQLException {
-    final PreparedStatement insert = connection.prepareStatement("INSERT OR REPLACE" +
-      " INTO " + TABLE_GENERAL_CONFERENCE_ADDRESS + " (" +
-      "conference" +
-      ",ordinal" +
-      ",session" +
-      ",speaker" +
-      ",title" +
-      ",description" +
-      ",role" +
-      ",kicker" +
-      ",url" +
-      ",filename_html" +
-      ",filename_text" +
-      ",category" +
-      ") VALUES(?,?,?,?,?,?,?,?,?,?,?,?);");
-    insert.setString(1, getConference());
-    insert.setInt(2, getOrdinal());
-    insert.setString(3, getSession());
-    DatabaseHelper.setStringOrNull(insert, 4, getSpeaker());
-    insert.setString(5, getTitle());
-    DatabaseHelper.setStringOrNull(insert, 6, getDescription());
-    DatabaseHelper.setStringOrNull(insert, 7, getRole());
-    DatabaseHelper.setStringOrNull(insert, 8, getKicker());
-    insert.setString(9, getUrl());
-    DatabaseHelper.setStringOrNull(insert, 10, getFilenameHtml());
-    DatabaseHelper.setStringOrNull(insert, 11, getFilenameText());
-    DatabaseHelper.setStringOrNull(insert, 12, getCategory());
-    final int result = insert.executeUpdate();
-    insert.close();
-    return result;
+    final String sql =
+      "INSERT OR REPLACE INTO " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS + " (" +
+        "conference" +
+        ",ordinal" +
+        ",session" +
+        ",speaker" +
+        ",title" +
+        ",description" +
+        ",role" +
+        ",kicker" +
+        ",url" +
+        ",filename" +
+        ",category" +
+        ") VALUES(?,?,?,?,?,?,?,?,?,?,?);";
+    try (final PreparedStatement insert = connection.prepareStatement(sql)) {
+      insert.setString(1, getConference());
+      insert.setInt(2, getOrdinal());
+      insert.setString(3, getSession());
+      DatabaseUtils.setStringOrNull(insert, 4, getSpeaker());
+      insert.setString(5, getTitle());
+      DatabaseUtils.setStringOrNull(insert, 6, getDescription());
+      DatabaseUtils.setStringOrNull(insert, 7, getRole());
+      DatabaseUtils.setStringOrNull(insert, 8, getKicker());
+      insert.setString(9, getUrl());
+      DatabaseUtils.setStringOrNull(insert, 10, getFilename());
+      DatabaseUtils.setStringOrNull(insert, 11, getCategory());
+      return insert.executeUpdate();
+    }
+  }
+
+  public static List<GeneralConferenceAddress> selectAll(Connection connection) throws SQLException {
+    final String sql = "SELECT * FROM " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS + ";";
+    try (final PreparedStatement select = connection.prepareStatement(sql)) {
+      final ResultSet result = select.executeQuery();
+      final List<GeneralConferenceAddress> addresses = new ArrayList<>();
+      while (result.next()) {
+        addresses.add(new GeneralConferenceAddress(result));
+      }
+      return addresses;
+    }
+  }
+
+  public static GeneralConferenceAddress selectWithUrl(Connection connection, String url) throws SQLException {
+    final String sql = "SELECT * FROM " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS + " WHERE url=?;";
+    try (final PreparedStatement select = connection.prepareStatement(sql)) {
+      select.setString(1, url);
+      final ResultSet result = select.executeQuery();
+      if (!result.next()) {
+        return null;
+      }
+      return new GeneralConferenceAddress(result);
+    }
   }
 }

@@ -1,56 +1,36 @@
 package com.ericrobertbrewer.lectern.app;
 
-import com.ericrobertbrewer.lectern.Folders;
+import com.ericrobertbrewer.lectern.Launcher;
+import com.ericrobertbrewer.lectern.Namespaces;
 import com.ericrobertbrewer.lectern.app.model.GeneralConference;
 import com.ericrobertbrewer.lectern.app.model.GeneralConferenceAddress;
-import com.ericrobertbrewer.lectern.db.DatabaseHelper;
+import com.ericrobertbrewer.lectern.db.DatabaseUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
 
 import java.io.File;
-import java.io.IOException;
+import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
-import java.util.logging.FileHandler;
-import java.util.logging.Formatter;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
-public class ScrapeGeneralConferences {
+public class GeneralConferenceScraper implements AppScraper {
 
-  private static final String APP_NAME = "general-conference";
-  private static final String URL_COMPONENT = "general-conference";
+  public static final String URL_COMPONENT = "general-conference";
 
-  public static void main(String[] args) throws IOException, SQLException {
-    final File appFolder = new File(Folders.APP_ROOT + File.separator + APP_NAME);
-    if (!appFolder.exists() && !appFolder.mkdirs()) {
-      throw new RuntimeException("Unable to create folder `" + appFolder.getPath() + "`.");
-    }
-    final File logFolder = new File(Folders.LOG_ROOT + File.separator + APP_NAME);
-    if (!logFolder.exists() && !logFolder.mkdirs()) {
-      throw new RuntimeException("Unable to create folder `" + logFolder.getPath() + "`.");
-    }
-    final Logger logger = Logger.getLogger(ScrapeGeneralConferences.class.getName());
-    final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss", Locale.US);
-    final String nowFormat = dateTimeFormatter.format(LocalDateTime.now());
-    final File logFile = new File(logFolder.getPath() + File.separator + nowFormat);
-    final FileHandler logFileHandler = new FileHandler(logFile.getPath());
-    final Formatter formatter = new SimpleFormatter();
-    logFileHandler.setFormatter(formatter);
-    logger.addHandler(logFileHandler);
-    final DatabaseHelper databaseHelper = new DatabaseHelper();
-    databaseHelper.connect(Folders.APP_DATABASE_DEFAULT);
-    databaseHelper.executeSql(GeneralConference.CREATE_STMT);
-    databaseHelper.executeSql(GeneralConferenceAddress.CREATE_STMT);
-    final WebDriver driver = new ChromeDriver();
+  public static void main(String[] args) {
+    final AppScraper scraper = new GeneralConferenceScraper();
+    Launcher.launch(scraper, Namespaces.APP_GENERAL_CONFERENCE);
+  }
+
+  @Override
+  public void scrape(WebDriver driver, Connection connection, File appFolder, Logger logger) throws SQLException {
+    DatabaseUtils.executeSql(connection, GeneralConference.CREATE_STMT);
+    DatabaseUtils.executeSql(connection, GeneralConferenceAddress.CREATE_STMT);
 
     // Collect links to sessions and decades.
     driver.navigate().to("https://www.churchofjesuschrist.org/study/general-conference?lang=eng");
@@ -92,8 +72,9 @@ public class ScrapeGeneralConferences {
     // Collect links to addresses.
     for (String conferenceUrl : conferenceUrls) {
       final String conference = getConference(conferenceUrl);
-      if (GeneralConference.select(databaseHelper.getConnection(), conference) != null) {
+      if (GeneralConference.select(connection, conference) != null) {
         logger.info("Skipping conference: " + conference);
+        // TODO: Add `force` flag to overwrite.
         continue;
       }
       // Collect metadata.
@@ -118,11 +99,13 @@ public class ScrapeGeneralConferences {
           final WebElement titleP = addressLi.findElement(By.className("title"));
           final String title = titleP.getText();
           if (title.equals(session)) {
+            // Skip session items.
             continue;
           }
           final WebElement a = addressLi.findElement(By.tagName("a"));
           final String url = a.getAttribute("href");
-          final GeneralConferenceAddress address = new GeneralConferenceAddress(conference, ordinal, session, title, url);
+          final String filename = getFilename(url);
+          final GeneralConferenceAddress address = new GeneralConferenceAddress(conference, ordinal, session, title, url, filename);
           try {
             final WebElement primaryMetaP = addressLi.findElement(By.className("primaryMeta"));
             address.setSpeaker(primaryMetaP.getText());
@@ -133,22 +116,17 @@ public class ScrapeGeneralConferences {
             address.setDescription(descriptionP.getText());
           } catch (NoSuchElementException ignored) {
           }
-          logger.info("Inserting address: " + address.getOrdinal() + ", " + address.getTitle() + ", " + address.getUrl());
-          address.insertOrReplace(databaseHelper.getConnection());
+          logger.info("Inserting address: " + address.getPrimaryKey());
+          address.insertOrReplace(connection);
           ordinal++;
         }
       }
       final GeneralConference generalConference = new GeneralConference(conference, ordinal, conferenceUrl);
-      generalConference.insertOrReplace(databaseHelper.getConnection());
+      generalConference.insertOrReplace(connection);
     }
-
-    // Release resources.
-    driver.quit();
-    databaseHelper.close();
-    logFileHandler.close();
   }
 
-  public static String getConference(String url) {
+  private static String getConference(String url) {
     final String[] urlParams = url.split("\\?");
     final String baseUrl = urlParams[0];
     final List<String> components = Arrays.asList(baseUrl.split("/"));
@@ -157,5 +135,12 @@ public class ScrapeGeneralConferences {
       throw new IllegalArgumentException("Unable to get conference from `" + url + "`.");
     }
     return components.get(gcIndex + 1) + "-" + components.get(gcIndex + 2);
+  }
+
+  private static String getFilename(String url) {
+    final String[] urlParams = url.split("\\?");
+    final String baseUrl = urlParams[0];
+    final String[] components = baseUrl.split("/");
+    return components[components.length - 1];
   }
 }
