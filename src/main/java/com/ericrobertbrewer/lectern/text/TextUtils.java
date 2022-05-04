@@ -36,6 +36,8 @@ public final class TextUtils {
           lastEnd = 0;
         }
       } else {
+        // Some references are recited: "the <a>eighth article of faith</a> states,"
+        // https://www.churchofjesuschrist.org/study/general-conference/2022/04/14bednar?lang=eng
         text = text.substring(0, start) + // Left of ref marker.
           text.substring(start + REF_START.length(), end) + // Inside ref marker.
           text.substring(end + REF_END.length()); // Right of ref marker.

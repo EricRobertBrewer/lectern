@@ -6,11 +6,15 @@ import com.ericrobertbrewer.lectern.app.model.GeneralConferenceAddress;
 import com.ericrobertbrewer.lectern.app.model.GeneralConferenceAddressRef;
 import com.ericrobertbrewer.lectern.db.DatabaseUtils;
 import com.ericrobertbrewer.lectern.text.TextUtils;
+import com.ericrobertbrewer.lectern.web.WebDriverManager;
 import com.ericrobertbrewer.lectern.web.WebUtils;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
@@ -24,7 +28,12 @@ public class GeneralConferenceAddressScraper implements AppScraper {
   }
 
   @Override
-  public void scrape(WebDriver driver, Connection connection, File appFolder, Logger logger) throws SQLException {
+  public void scrape(
+    WebDriverManager driverManager,
+    Connection connection,
+    File appFolder,
+    Logger logger
+  ) throws SQLException {
     DatabaseUtils.executeSql(connection, GeneralConferenceAddressRef.CREATE_STMT);
 
     final List<GeneralConferenceAddress> addresses = GeneralConferenceAddress.selectAll(connection);
@@ -41,19 +50,34 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       }
 
       logger.info("Scraping address: " + address.getPrimaryKey() + " " + address.getUrl());
-      driver.navigate().to(address.getUrl());
-      final WebElement appDiv = driver.findElement(By.id("app"));
+      // Forbid redirects to A/B testing as `https://abn.churchofjesuschrist.org/...`.
+      final String urlNoAbn = WebUtils.appendQuery(address.getUrl(), "mboxDisable", "1");
+      final By appBy = By.id("app");
+      final int retries = 2;
+      final WebElement appDiv;
+      try {
+        appDiv = WebUtils.navigateAndFindElement(driverManager, urlNoAbn, appBy, retries);
+      } catch (NoSuchElementException e) {
+        throw new RuntimeException("Unable to find element " + appBy + " after " + retries + " retries.", e);
+      }
       final WebElement contentSection = appDiv.findElement(By.id("content"));
       final WebElement mainArticle = contentSection.findElement(By.id("main"));
       final WebElement bodyDiv = mainArticle.findElement(By.className("body"));
 
       // Keep track of references.
       final Map<String, List<Integer>> refsToLines = new HashMap<>();
-      final Map<Integer, Integer> notesToLine = new HashMap<>();
+      // Unfortunately, a note can be an asterisk...
+      // https://www.churchofjesuschrist.org/study/general-conference/1990/10/covenants
+      final Map<String, Integer> notesToLine = new HashMap<>();
+
+      // Rarely, a note can be in the title.
+      // https://www.churchofjesuschrist.org/study/general-conference/1975/10/the-welfare-production-distribution-department?lang=eng
+      final WebElement header = bodyDiv.findElement(By.tagName("header"));
+      final WebElement titleH1 = WebUtils.findElement(header, new By[]{By.id("title1"), By.tagName("h1")});
+      escapeReferences(driverManager.getDriver(), titleH1, refsToLines, notesToLine, GeneralConferenceAddressRef.LINE_TITLE);
 
       // Find role and kicker.
       boolean updated = false;
-      final WebElement header = bodyDiv.findElement(By.tagName("header"));
       try {
         final WebElement bylineDiv = header.findElement(By.className("byline"));
         final By[] bys = {By.id("author2"), By.className("author-role")};
@@ -81,8 +105,12 @@ public class GeneralConferenceAddressScraper implements AppScraper {
         final WebElement kickerP = WebUtils.findElement(header, bys);
         // Yes, a reference can appear in the kicker and only in the kicker.
         // https://www.churchofjesuschrist.org/study/general-conference/2007/10/o-remember-remember?lang=eng
-        final int escapedRefs =
-          escapeReferences(driver, kickerP, refsToLines, notesToLine, GeneralConferenceAddressRef.LINE_KICKER);
+        final int escapedRefs = escapeReferences(
+          driverManager.getDriver(),
+          kickerP,
+          refsToLines,
+          notesToLine,
+          GeneralConferenceAddressRef.LINE_KICKER);
         final String text = TextUtils.removeEscapedReferenceMarkers(kickerP.getText().trim(), escapedRefs);
         address.setKicker(text);
         updated = true;
@@ -96,7 +124,7 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       // (Later videos include a transcript.)
       // https://www.churchofjesuschrist.org/study/general-conference/2020/10/33video?lang=eng
       if (bodyBlockDiv != null) {
-        appendTextLines(driver, bodyBlockDiv, textLines, refsToLines, notesToLine, logger);
+        appendTextLines(driverManager.getDriver(), bodyBlockDiv, textLines, refsToLines, notesToLine, logger);
       }
 
       // Collect references from notes footer.
@@ -104,18 +132,28 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       // Most sustainings, audit reports, and statistical reports don't have any notes.
       final WebElement notesFooter = WebUtils.findElementOrNull(bodyDiv, By.tagName("footer"));
       if (notesFooter != null) {
-        WebUtils.setElementDisplay(driver, notesFooter, "block");
-        final WebElement notesOl = notesFooter.findElement(By.tagName("ol"));
+        WebUtils.setElementDisplay(driverManager.getDriver(), notesFooter, "block");
+        // Almost always a <ol>, but can be a <ul class="symbol">.
+        // https://www.churchofjesuschrist.org/study/general-conference/1990/10/covenants
+        final By[] bys = {By.tagName("ol"), By.tagName("ul")};
+        final WebElement notesOl = WebUtils.findElement(notesFooter, bys);
         final List<WebElement> notesLis = notesOl.findElements(By.tagName("li"));
         for (WebElement notesLi : notesLis) {
           // Don't rely on the `id` attribute of the <li> as "note\d+" because it can be incorrect!
           // https://www.churchofjesuschrist.org/study/general-conference/2020/04/13rasband?lang=eng
-          final String dataMarker = notesLi.getAttribute("data-marker"); // Assumes "\d+\.".
-          final int note = Integer.parseInt(dataMarker.substring(0, dataMarker.length() - 1));
+          final String dataMarker = notesLi.getAttribute("data-marker");
+          final String note;
+          if (dataMarker.endsWith(".")) {
+            // As "\d+\.", e.g., "12.".
+            note = dataMarker.substring(0, dataMarker.length() - 1);
+          } else {
+            // No trailing period for list items in <ul class="symbol">.
+            note = dataMarker;
+          }
           final int line;
           if (notesToLine.containsKey(note)) {
             line = notesToLine.get(note);
-          } else if (note == notesToLine.size() + 1) {
+          } else if (Integer.parseInt(note) == notesToLine.size() + 1) {
             // Some addresses have one extraneous reference that isn't linked in the text body.
             // https://www.churchofjesuschrist.org/study/general-conference/2006/10/the-gathering-of-scattered-israel?lang=eng
             // Refer to the last line.
@@ -174,7 +212,7 @@ public class GeneralConferenceAddressScraper implements AppScraper {
     WebDriver driver,
     WebElement element,
     Map<String, List<Integer>> refsToLines,
-    Map<Integer, Integer> notesToLine,
+    Map<String, Integer> notesToLine,
     int line
   ) {
     int escapedRefs = 0;
@@ -185,8 +223,7 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       final String ref = a.getAttribute("href").split("#")[0];
       if ("note-ref".equals(className)) {
         // Remove note text.
-        final int note = Integer.parseInt(aText);
-        notesToLine.put(note, line);
+        notesToLine.put(aText, line);
         WebUtils.replaceElement(driver, a, "");
       } else if (
         "scripture-ref".equals(className) ||
@@ -215,10 +252,9 @@ public class GeneralConferenceAddressScraper implements AppScraper {
     WebElement element,
     List<String> lines,
     Map<String, List<Integer>> refsToLines,
-    Map<Integer, Integer> notesToLine,
+    Map<String, Integer> notesToLine,
     Logger logger
   ) {
-    // TODO: `boolean doesHaveVisibleTextOutsideOfChildren(WebElement element) {}`
     final List<WebElement> children = element.findElements(By.xpath("./*"));
     if (children.size() == 0) {
       // Get visible text.
@@ -251,8 +287,10 @@ public class GeneralConferenceAddressScraper implements AppScraper {
 
   private static final Set<String> FORMATTING_TAGS = new HashSet<>();
   static {
-    FORMATTING_TAGS.addAll(Arrays.asList("b", "i", "strong", "em", "a", "sup", "cite", "span"));
+    FORMATTING_TAGS.addAll(Arrays.asList("b", "i", "strong", "em", "a", "sup", "cite", "span", "sub", "u"));
     // <span> page break: https://www.churchofjesuschrist.org/study/general-conference/2021/10/11nelson?lang=eng
+    // <sub> (H_2O) https://www.churchofjesuschrist.org/study/general-conference/1984/04/the-simplicity-of-gospel-truths
+    // <u> https://www.churchofjesuschrist.org/study/general-conference/1974/04/planning-for-a-full-and-abundant-life?lang=eng
   }
 
   private static final Set<String> IGNORE_TAGS = new HashSet<>();
@@ -264,7 +302,9 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       "figure",
       // Inline videos come with controls.
       // https://www.churchofjesuschrist.org/study/general-conference/2021/10/47nelson?lang=eng
-      "button", "svg", "label", "select"));
+      "button", "svg", "label", "select",
+      // https://www.churchofjesuschrist.org/study/general-conference/1982/10/run-boy-run?lang=eng
+      "br"));
   }
 
   private static final Set<String> CONTENT_TAGS = new HashSet<>();
@@ -284,6 +324,8 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       "div",
       // Some talks have an annotation within a card.
       // https://www.churchofjesuschrist.org/study/general-conference/2012/10/i-know-it-i-live-it-i-love-it?lang=eng
-      "aside"));
+      "aside",
+      // https://www.churchofjesuschrist.org/study/general-conference/1983/04/anonymous?lang=eng
+      "blockquote"));
   }
 }

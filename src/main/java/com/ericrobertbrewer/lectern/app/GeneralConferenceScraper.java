@@ -5,9 +5,9 @@ import com.ericrobertbrewer.lectern.Namespaces;
 import com.ericrobertbrewer.lectern.app.model.GeneralConference;
 import com.ericrobertbrewer.lectern.app.model.GeneralConferenceAddress;
 import com.ericrobertbrewer.lectern.db.DatabaseUtils;
+import com.ericrobertbrewer.lectern.web.WebDriverManager;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
 import java.io.File;
@@ -28,15 +28,21 @@ public class GeneralConferenceScraper implements AppScraper {
   }
 
   @Override
-  public void scrape(WebDriver driver, Connection connection, File appFolder, Logger logger) throws SQLException {
+  public void scrape(
+    WebDriverManager driverManager,
+    Connection connection,
+    File appFolder,
+    Logger logger
+  ) throws SQLException {
     DatabaseUtils.executeSql(connection, GeneralConference.CREATE_STMT);
     DatabaseUtils.executeSql(connection, GeneralConferenceAddress.CREATE_STMT);
 
     // Collect links to sessions and decades.
-    driver.navigate().to("https://www.churchofjesuschrist.org/study/general-conference?lang=eng");
+    driverManager.getDriver().navigate()
+      .to("https://www.churchofjesuschrist.org/study/general-conference?lang=eng");
     final List<String> conferenceUrls = new ArrayList<>();
     final List<String> decadeUrls = new ArrayList<>();
-    final WebElement mainSection = driver.findElement(By.id("main"));
+    final WebElement mainSection = driverManager.getDriver().findElement(By.id("main"));
     final List<WebElement> as = mainSection.findElements(By.tagName("a"));
     for (WebElement a : as) {
       final String url = a.getAttribute("href");
@@ -59,8 +65,8 @@ public class GeneralConferenceScraper implements AppScraper {
     // Collect links to conferences within decades.
     for (String decadeHref : decadeUrls) {
       logger.info("Navigating to decade: " + decadeHref);
-      driver.navigate().to(decadeHref);
-      final WebElement decadeMainSection = driver.findElement(By.id("main"));
+      driverManager.getDriver().navigate().to(decadeHref);
+      final WebElement decadeMainSection = driverManager.getDriver().findElement(By.id("main"));
       final List<WebElement> decadeAs = decadeMainSection.findElements(By.tagName("a"));
       for (WebElement decadeA : decadeAs) {
         final String url = decadeA.getAttribute("href");
@@ -79,8 +85,8 @@ public class GeneralConferenceScraper implements AppScraper {
       }
       // Collect metadata.
       logger.info("Navigating to conference: " + conference + ", " + conferenceUrl);
-      driver.navigate().to(conferenceUrl);
-      final WebElement conferenceMainArticle = driver.findElement(By.id("main"));
+      driverManager.getDriver().navigate().to(conferenceUrl);
+      final WebElement conferenceMainArticle = driverManager.getDriver().findElement(By.id("main"));
       final WebElement manifestNav = conferenceMainArticle.findElement(By.className("manifest"));
       final WebElement sessionUl = manifestNav.findElement(By.tagName("ul"));
       final List<WebElement> sessionLis = sessionUl.findElements(By.xpath("./*"));

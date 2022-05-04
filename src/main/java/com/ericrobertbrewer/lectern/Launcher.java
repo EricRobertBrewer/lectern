@@ -2,9 +2,7 @@ package com.ericrobertbrewer.lectern;
 
 import com.ericrobertbrewer.lectern.app.AppScraper;
 import com.ericrobertbrewer.lectern.db.DatabaseUtils;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.firefox.FirefoxDriver;
+import com.ericrobertbrewer.lectern.web.WebDriverManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,18 +22,21 @@ import java.util.logging.SimpleFormatter;
 public final class Launcher {
 
   /**
-   * Creates resources for {@link AppScraper#scrape(WebDriver, Connection, File, Logger)}.
+   * Creates resources for {@link AppScraper#scrape(WebDriverManager, Connection, File, Logger)}.
    * @param scraper Scraper.
    * @param appName Name of content folder that will be created beneath {@code app/}.
    */
   public static void launch(AppScraper scraper, String appName) {
     // Create web driver.
-    final WebDriver driver = createDriver();
+    final WebDriverManager.Browser browser = getBrowser();
+    final WebDriverManager driverManager = new WebDriverManager(browser);
+
     // Prepare content folder.
     final File appFolder = new File(Namespaces.FOLDER_APP_ROOT + File.separator + appName);
     if (!appFolder.exists() && !appFolder.mkdirs()) {
       throw new RuntimeException("Unable to create folder `" + appFolder.getPath() + "`.");
     }
+
     // Prepare logging.
     final File logFolder = new File(Namespaces.FOLDER_LOG_ROOT + File.separator + appName);
     if (!logFolder.exists() && !logFolder.mkdirs()) {
@@ -57,21 +58,21 @@ public final class Launcher {
     logger.addHandler(logFileHandler);
 
     try (Connection connection = DatabaseUtils.connect(Namespaces.DATABASE_PATH_APP_DEFAULT)) {
-      scraper.scrape(driver, connection, appFolder, logger);
+      scraper.scrape(driverManager, connection, appFolder, logger);
     } catch (SQLException e) {
       throw new RuntimeException(e);
     } finally {
       logFileHandler.close();
-      driver.quit();
+      driverManager.close();
     }
   }
 
-  private static WebDriver createDriver() {
+  private static WebDriverManager.Browser getBrowser() {
     if (System.getProperty("webdriver.chrome.driver") != null) {
-      return new ChromeDriver();
+      return WebDriverManager.Browser.CHROME;
     }
     if (System.getProperty("webdriver.gecko.driver") != null) {
-      return new FirefoxDriver();
+      return WebDriverManager.Browser.FIREFOX;
     }
     throw new RuntimeException(
       "No web drivers found. Add one to the VM options as `-Dwebdriver.[chrome|gecko].driver=/path/to/driver`.");

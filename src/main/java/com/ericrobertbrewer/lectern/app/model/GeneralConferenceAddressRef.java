@@ -12,6 +12,12 @@ import java.util.stream.Collectors;
 public class GeneralConferenceAddressRef implements DatabaseTable {
 
   /**
+   * Ultra-rarely when a note refers to the title.
+   *
+   * @see <a href="https://www.churchofjesuschrist.org/study/general-conference/1975/10/the-welfare-production-distribution-department?lang=eng">www.churchofjesuschrist.org/study/general-conference/1975/10/the-welfare-production-distribution-department?lang=eng</a>
+   */
+  public static final int LINE_TITLE = -2;
+  /**
    * Used when a note refers to the kicker.
    *
    * @see <a href="https://www.churchofjesuschrist.org/study/general-conference/2007/10/o-remember-remember?lang=eng">O Remember, Remember</a>
