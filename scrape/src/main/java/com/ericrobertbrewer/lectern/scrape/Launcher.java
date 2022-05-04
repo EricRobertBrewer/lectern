@@ -1,8 +1,8 @@
-package com.ericrobertbrewer.lectern;
+package com.ericrobertbrewer.lectern.scrape;
 
-import com.ericrobertbrewer.lectern.app.AppScraper;
-import com.ericrobertbrewer.lectern.db.DatabaseUtils;
-import com.ericrobertbrewer.lectern.web.WebDriverManager;
+import com.ericrobertbrewer.lectern.scrape.app.AppScraper;
+import com.ericrobertbrewer.lectern.scrape.db.DatabaseUtils;
+import com.ericrobertbrewer.lectern.scrape.web.WebDriverManager;
 
 import java.io.File;
 import java.io.IOException;

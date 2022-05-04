@@ -1,6 +1,6 @@
-package com.ericrobertbrewer.lectern.db;
+package com.ericrobertbrewer.lectern.scrape.db;
 
-import com.ericrobertbrewer.lectern.Namespaces;
+import com.ericrobertbrewer.lectern.scrape.Namespaces;
 
 import java.sql.*;
 

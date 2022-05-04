@@ -1,7 +1,7 @@
-package com.ericrobertbrewer.lectern.app;
+package com.ericrobertbrewer.lectern.scrape.app;
 
-import com.ericrobertbrewer.lectern.Launcher;
-import com.ericrobertbrewer.lectern.web.WebDriverManager;
+import com.ericrobertbrewer.lectern.scrape.Launcher;
+import com.ericrobertbrewer.lectern.scrape.web.WebDriverManager;
 
 import java.io.File;
 import java.sql.Connection;

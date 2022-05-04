@@ -1,4 +1,4 @@
-package com.ericrobertbrewer.lectern;
+package com.ericrobertbrewer.lectern.scrape;
 
 import java.io.File;
 

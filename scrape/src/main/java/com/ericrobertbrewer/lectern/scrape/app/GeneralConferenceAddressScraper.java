@@ -1,13 +1,13 @@
-package com.ericrobertbrewer.lectern.app;
+package com.ericrobertbrewer.lectern.scrape.app;
 
-import com.ericrobertbrewer.lectern.Launcher;
-import com.ericrobertbrewer.lectern.Namespaces;
-import com.ericrobertbrewer.lectern.app.model.GeneralConferenceAddress;
-import com.ericrobertbrewer.lectern.app.model.GeneralConferenceAddressRef;
-import com.ericrobertbrewer.lectern.db.DatabaseUtils;
-import com.ericrobertbrewer.lectern.text.TextUtils;
-import com.ericrobertbrewer.lectern.web.WebDriverManager;
-import com.ericrobertbrewer.lectern.web.WebUtils;
+import com.ericrobertbrewer.lectern.scrape.Launcher;
+import com.ericrobertbrewer.lectern.scrape.Namespaces;
+import com.ericrobertbrewer.lectern.scrape.app.model.GeneralConferenceAddress;
+import com.ericrobertbrewer.lectern.scrape.app.model.GeneralConferenceAddressRef;
+import com.ericrobertbrewer.lectern.scrape.db.DatabaseUtils;
+import com.ericrobertbrewer.lectern.scrape.text.TextUtils;
+import com.ericrobertbrewer.lectern.scrape.web.WebDriverManager;
+import com.ericrobertbrewer.lectern.scrape.web.WebUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;

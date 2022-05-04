@@ -1,4 +1,4 @@
-package com.ericrobertbrewer.lectern.app.model;
+package com.ericrobertbrewer.lectern.scrape.app.model;
 
 import java.sql.Connection;
 import java.sql.SQLException;

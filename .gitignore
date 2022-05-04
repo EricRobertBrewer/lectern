@@ -2,6 +2,8 @@ app/
 !**/src/main/**/app/
 !**/src/test/**/app/
 log/
+!**/src/main/**/log/
+!**/src/test/**/log/
 
 .gradle
 build/

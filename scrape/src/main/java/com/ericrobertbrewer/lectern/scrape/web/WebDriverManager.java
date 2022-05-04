@@ -1,4 +1,4 @@
-package com.ericrobertbrewer.lectern.web;
+package com.ericrobertbrewer.lectern.scrape.web;
 
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
