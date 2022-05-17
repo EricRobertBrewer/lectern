@@ -76,13 +76,63 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       final WebElement titleH1 = WebUtils.findElement(header, new By[]{By.id("title1"), By.tagName("h1")});
       escapeReferences(driverManager.getDriver(), titleH1, refsToLines, notesToLine, GeneralConferenceAddressRef.LINE_TITLE);
 
-      // Find role and kicker.
+      // Find speaker, role, and/or kicker.
       boolean updated = false;
+      if (address.getSpeaker() == null) {
+        try {
+          final WebElement bylineDiv = header.findElement(By.className("byline"));
+          // https://www.churchofjesuschrist.org/study/general-conference/1974/04/church-finance-committee-report?lang=eng
+          final By[] bys = {By.id("author1"), By.className("author-name")};
+          final WebElement authorNameP = WebUtils.findElement(bylineDiv, bys);
+          final String text = authorNameP.getText();
+          final String[] prefixes = {"By ", "Presented by "};
+          for (String prefix : prefixes) {
+            if (text.startsWith(prefix)) {
+              address.setSpeaker(text.substring(prefix.length()));
+              updated = true;
+              break;
+            }
+          }
+        } catch (NoSuchElementException e) {
+          try {
+            final WebElement bodyBlockDiv = bodyDiv.findElement(By.className("body-block"));
+            // https://www.churchofjesuschrist.org/study/general-conference/1971/10/sustaining-of-general-authorities-and-officers?lang=eng
+            final WebElement p = bodyBlockDiv.findElement(By.tagName("p"));
+            final WebElement strong = p.findElement(By.tagName("strong"));
+            final String text = strong.getText();
+            final String prefix = "President ";
+            if (text.startsWith(prefix)) {
+              if (text.endsWith(":")) {
+                // https://www.churchofjesuschrist.org/study/general-conference/1974/10/sustaining-of-church-officers?lang=eng
+                address.setSpeaker(text.substring(prefix.length(), text.length() - 1));
+              } else {
+                address.setSpeaker(text.substring(prefix.length()));
+              }
+              updated = true;
+            }
+          } catch (NoSuchElementException e2) {
+            try {
+              final WebElement bodyBlockDiv = bodyDiv.findElement(By.className("body-block"));
+              // https://www.churchofjesuschrist.org/study/general-conference/1975/04/church-finance-committee-report?lang=eng
+              final WebElement closingBlockDiv = bodyBlockDiv.findElement(By.className("closing-block"));
+              final List<WebElement> ps = closingBlockDiv.findElements(By.tagName("p"));
+              for (int i = 0; i < ps.size() - 1; i++) {
+                if ("CHURCH FINANCE COMMITTEE".equals(ps.get(i).getText())) {
+                  address.setSpeaker(ps.get(i + 1).getText());
+                  updated = true;
+                  break;
+                }
+              }
+            } catch (NoSuchElementException ignored) {
+            }
+          }
+        }
+      }
       try {
         final WebElement bylineDiv = header.findElement(By.className("byline"));
         final By[] bys = {By.id("author2"), By.className("author-role")};
-        final WebElement authorP = WebUtils.findElement(bylineDiv, bys);
-        address.setRole(authorP.getText());
+        final WebElement authorRoleP = WebUtils.findElement(bylineDiv, bys);
+        address.setRole(authorRoleP.getText());
         updated = true;
       } catch (NoSuchElementException e) {
         try {
@@ -193,7 +243,7 @@ public class GeneralConferenceAddressScraper implements AppScraper {
         addressRef.insertOrReplace(connection);
       }
 
-      // Update role and kicker.
+      // Update speaker, role, and/or kicker.
       if (updated) {
         address.insertOrReplace(connection);
         logger.info("Updated address: " + address.getPrimaryKey());

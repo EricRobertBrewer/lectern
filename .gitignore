@@ -5,6 +5,11 @@ log/
 !**/src/main/**/log/
 !**/src/test/**/log/
 
+# Python
+*.pyc
+**/.ipynb_checkpoints/
+
+# Build
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar

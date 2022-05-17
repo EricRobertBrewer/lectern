@@ -10,8 +10,8 @@ public final class Namespaces {
   /**
    * Root of downloaded (scraped) content.
    */
-  public static final String FOLDER_APP_ROOT = "app";
-  public static final String FOLDER_LOG_ROOT = "log";
+  public static final String FOLDER_APP_ROOT = ".." + File.separator + "app";
+  public static final String FOLDER_LOG_ROOT = ".." + File.separator + "log";
 
   public static final String DATABASE_PATH_APP_DEFAULT = FOLDER_APP_ROOT + File.separator + "app.db";
 
