@@ -13,20 +13,20 @@ import java.util.List;
 public class GeneralConferenceAddress implements DatabaseTable {
 
   public static final String CREATE_STMT =
-    "CREATE TABLE IF NOT EXISTS " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS + " (" +
-      "conference TEXT NOT NULL" + // 2022-04
-      ", ordinal INTEGER NOT NULL" + // 0
-      ", session TEXT NOT NULL" + // Saturday Morning Session
-      ", speaker TEXT DEFAULT NULL" + // Russell M. Nelson
-      ", title TEXT NOT NULL" + // Preaching the Gospel of Peace
-      ", description TEXT DEFAULT NULL" + // President Nelson teaches that we must stand in holy places...
-      ", role TEXT DEFAULT NULL" + // President of the Church of Jesus Christ of Latter-day Saints
-      ", kicker TEXT DEFAULT NULL" + // We have the sacred responsibility to share the power and peace of...
-      ", url TEXT NOT NULL" + // https://www.churchofjesuschrist.org/study/general-conference/2022/04/11nelson...
-      ", filename TEXT NOT NULL" + // 11nelson
-      ", category TEXT DEFAULT NULL" + // (instruction|sustaining|auditing|video|...)
-      ", PRIMARY KEY (conference, ordinal)" +
-      ");";
+      "CREATE TABLE IF NOT EXISTS " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS + " (" +
+          "conference TEXT NOT NULL" + // 2022-04
+          ", ordinal INTEGER NOT NULL" + // 0
+          ", session TEXT NOT NULL" + // Saturday Morning Session
+          ", speaker TEXT DEFAULT NULL" + // Russell M. Nelson
+          ", title TEXT NOT NULL" + // Preaching the Gospel of Peace
+          ", description TEXT DEFAULT NULL" + // President Nelson teaches that we must stand in holy places...
+          ", role TEXT DEFAULT NULL" + // President of the Church of Jesus Christ of Latter-day Saints
+          ", kicker TEXT DEFAULT NULL" + // We have the sacred responsibility to share the power and peace of...
+          ", url TEXT NOT NULL" + // https://www.churchofjesuschrist.org/study/general-conference/2022/04/11nelson...
+          ", filename TEXT NOT NULL" + // 11nelson
+          ", category TEXT DEFAULT NULL" + // (instruction|sustaining|auditing|video|...)
+          ", PRIMARY KEY (conference, ordinal)" +
+          ");";
 
   private final String conference;
   private final int ordinal;
@@ -41,12 +41,12 @@ public class GeneralConferenceAddress implements DatabaseTable {
   private String category;
 
   public GeneralConferenceAddress(
-    String conference,
-    int ordinal,
-    String session,
-    String title,
-    String url,
-    String filename
+      String conference,
+      int ordinal,
+      String session,
+      String title,
+      String url,
+      String filename
   ) {
     this.conference = conference;
     this.ordinal = ordinal;
@@ -58,12 +58,12 @@ public class GeneralConferenceAddress implements DatabaseTable {
 
   private GeneralConferenceAddress(ResultSet result) throws SQLException {
     this(
-      result.getString("conference"),
-      result.getInt("ordinal"),
-      result.getString("session"),
-      result.getString("title"),
-      result.getString("url"),
-      result.getString("filename")
+        result.getString("conference"),
+        result.getInt("ordinal"),
+        result.getString("session"),
+        result.getString("title"),
+        result.getString("url"),
+        result.getString("filename")
     );
     setSpeaker(result.getString("speaker"));
     setDescription(result.getString("description"));
@@ -150,19 +150,19 @@ public class GeneralConferenceAddress implements DatabaseTable {
   @Override
   public int insertOrReplace(Connection connection) throws SQLException {
     final String sql =
-      "INSERT OR REPLACE INTO " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS + " (" +
-        "conference" +
-        ",ordinal" +
-        ",session" +
-        ",speaker" +
-        ",title" +
-        ",description" +
-        ",role" +
-        ",kicker" +
-        ",url" +
-        ",filename" +
-        ",category" +
-        ") VALUES(?,?,?,?,?,?,?,?,?,?,?);";
+        "INSERT OR REPLACE INTO " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS + " (" +
+            "conference" +
+            ",ordinal" +
+            ",session" +
+            ",speaker" +
+            ",title" +
+            ",description" +
+            ",role" +
+            ",kicker" +
+            ",url" +
+            ",filename" +
+            ",category" +
+            ") VALUES(?,?,?,?,?,?,?,?,?,?,?);";
     try (final PreparedStatement insert = connection.prepareStatement(sql)) {
       insert.setString(1, getConference());
       insert.setInt(2, getOrdinal());

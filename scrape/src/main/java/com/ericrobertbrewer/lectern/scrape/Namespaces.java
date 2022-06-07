@@ -19,6 +19,9 @@ public final class Namespaces {
   public static final String TABLE_GENERAL_CONFERENCE = "GeneralConference";
   public static final String TABLE_GENERAL_CONFERENCE_ADDRESS = "GeneralConferenceAddress";
   public static final String TABLE_GENERAL_CONFERENCE_ADDRESS_REF = "GeneralConferenceAddressRef";
+  public static final String APP_SCRIPTURES = "scriptures";
+  public static final String TABLE_SCRIPTURE_CHAPTER = "ScriptureChapter";
+  public static final String TABLE_SCRIPTURE_CHAPTER_REF = "ScriptureChapterRef";
 
   private Namespaces() {
   }

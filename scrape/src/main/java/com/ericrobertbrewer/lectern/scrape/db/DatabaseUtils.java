@@ -18,9 +18,9 @@ public final class DatabaseUtils {
       Class.forName("org.sqlite.JDBC");
     } catch (ClassNotFoundException e) {
       throw new RuntimeException(
-        "Unable to find suitable SQLite driver (JDBC)." +
-          " Perhaps try adding as a dependency `org.xerial:sqlite-jdbc:3.x.x`.",
-        e);
+          "Unable to find suitable SQLite driver (JDBC)." +
+              " Perhaps try adding as a dependency `org.xerial:sqlite-jdbc:3.x.x`.",
+          e);
     }
   }
 

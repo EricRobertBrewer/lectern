@@ -25,14 +25,18 @@ public class GeneralConferenceAddressRef implements DatabaseTable {
   public static final int LINE_KICKER = -1;
 
   public static final String CREATE_STMT =
-    "CREATE TABLE IF NOT EXISTS " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS_REF + " (" +
-      "conference TEXT NOT NULL" + // 2018-04
-      ", ordinal INTEGER NOT NULL" + // 27
-      ", url TEXT NOT NULL" + // http://devotional.byuh.edu/node/158
-      ", lines TEXT NOT NULL" + // 16,26
-      ", notes TEXT DEFAULT NULL" + // `Steven C. Wheelwright, “The Power of Small and Simple Things”...|Steven...`
-      ", PRIMARY KEY (conference, ordinal, url)" +
-      ");";
+      "CREATE TABLE IF NOT EXISTS " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS_REF + " (" +
+          "conference TEXT NOT NULL" + // 2018-04
+          ", ordinal INTEGER NOT NULL" + // 27
+          ", url TEXT NOT NULL" + // http://devotional.byuh.edu/node/158
+          ", lines TEXT NOT NULL" + // 16,26
+          ", notes TEXT DEFAULT NULL" + // `Steven C. Wheelwright, “The Power of Small and Simple Things”...|Steven...`
+          ", PRIMARY KEY (conference, ordinal, url)" +
+          ");";
+
+  private static final String LINE_DELIMITER = ",";
+  private static final String NOTES_DELIMITER = "|";
+  private static final String NOTES_DELIMITER_REGEX = "\\|";
 
   private final String conference;
   private final int ordinal;
@@ -50,11 +54,14 @@ public class GeneralConferenceAddressRef implements DatabaseTable {
 
   private GeneralConferenceAddressRef(ResultSet result) throws SQLException {
     this(
-      result.getString("conference"),
-      result.getInt("ordinal"),
-      result.getString("url"),
-      Arrays.stream(result.getString("lines").split(",")).mapToInt(Integer::parseInt).toArray(),
-      result.getString("notes") != null ? result.getString("notes").split("\\|") : null
+        result.getString("conference"),
+        result.getInt("ordinal"),
+        result.getString("url"),
+        Arrays.stream(result.getString("lines").split(LINE_DELIMITER))
+            .mapToInt(Integer::parseInt).toArray(),
+        result.getString("notes") != null ?
+            result.getString("notes").split(NOTES_DELIMITER_REGEX) :
+            null
     );
   }
 
@@ -86,17 +93,19 @@ public class GeneralConferenceAddressRef implements DatabaseTable {
   @Override
   public int insertOrReplace(Connection connection) throws SQLException {
     final String sql =
-      "INSERT OR REPLACE INTO " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS_REF +
-        " (conference,ordinal,url,lines,notes)" +
-        " VALUES(?,?,?,?,?);";
+        "INSERT OR REPLACE INTO " + Namespaces.TABLE_GENERAL_CONFERENCE_ADDRESS_REF +
+            " (conference,ordinal,url,lines,notes)" +
+            " VALUES(?,?,?,?,?);";
     try (final PreparedStatement insert = connection.prepareStatement(sql)) {
       insert.setString(1, getConference());
       insert.setInt(2, getOrdinal());
       insert.setString(3, getUrl());
       insert.setString(4,
-        Arrays.stream(getLines()).mapToObj(String::valueOf).collect(Collectors.joining(",")));
+          Arrays.stream(getLines())
+              .mapToObj(String::valueOf)
+              .collect(Collectors.joining(LINE_DELIMITER)));
       DatabaseUtils.setStringOrNull(insert, 5,
-        getNotes() != null ? String.join("|", getNotes()) : null);
+          getNotes() != null ? String.join(NOTES_DELIMITER, getNotes()) : null);
       return insert.executeUpdate();
     }
   }

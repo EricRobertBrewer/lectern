@@ -23,6 +23,7 @@ public final class Launcher {
 
   /**
    * Creates resources for {@link AppScraper#scrape(WebDriverManager, Connection, File, Logger)}.
+   *
    * @param scraper Scraper.
    * @param appName Name of content folder that will be created beneath {@code app/}.
    */
@@ -75,7 +76,7 @@ public final class Launcher {
       return WebDriverManager.Browser.FIREFOX;
     }
     throw new RuntimeException(
-      "No web drivers found. Add one to the VM options as `-Dwebdriver.[chrome|gecko].driver=/path/to/driver`.");
+        "No web drivers found. Add one to the VM options as `-Dwebdriver.[chrome|gecko].driver=/path/to/driver`.");
   }
 
   private Launcher() {

@@ -10,11 +10,11 @@ import java.sql.SQLException;
 public class GeneralConference implements DatabaseTable {
 
   public static final String CREATE_STMT =
-    "CREATE TABLE IF NOT EXISTS " + Namespaces.TABLE_GENERAL_CONFERENCE + " (" +
-      "conference TEXT PRIMARY KEY" + // 2022-04
-      ", count INTEGER NOT NULL" + // 38
-      ", url TEXT NOT NULL" + // https://www.churchofjesuschrist.org/study/general-conference/2022/04?lang=eng
-      ");";
+      "CREATE TABLE IF NOT EXISTS " + Namespaces.TABLE_GENERAL_CONFERENCE + " (" +
+          "conference TEXT PRIMARY KEY" + // 2022-04
+          ", count INTEGER NOT NULL" + // 38
+          ", url TEXT NOT NULL" + // https://www.churchofjesuschrist.org/study/general-conference/2022/04?lang=eng
+          ");";
 
   private final String conference;
   private final int count;
@@ -28,9 +28,9 @@ public class GeneralConference implements DatabaseTable {
 
   private GeneralConference(ResultSet result) throws SQLException {
     this(
-      result.getString("conference"),
-      result.getInt("count"),
-      result.getString("url")
+        result.getString("conference"),
+        result.getInt("count"),
+        result.getString("url")
     );
   }
 
@@ -54,11 +54,9 @@ public class GeneralConference implements DatabaseTable {
   @Override
   public int insertOrReplace(Connection connection) throws SQLException {
     final String sql =
-      "INSERT INTO " + Namespaces.TABLE_GENERAL_CONFERENCE + " (" +
-        "conference" +
-        ",count" +
-        ",url" +
-        ") VALUES(?,?,?);";
+        "INSERT INTO " + Namespaces.TABLE_GENERAL_CONFERENCE +
+            " (conference,count,url)" +
+            " VALUES(?,?,?);";
     try (final PreparedStatement insert = connection.prepareStatement(sql)) {
       insert.setString(1, getConference());
       insert.setInt(2, getCount());

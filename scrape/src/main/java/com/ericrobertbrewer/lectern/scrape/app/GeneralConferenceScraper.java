@@ -6,6 +6,7 @@ import com.ericrobertbrewer.lectern.scrape.app.model.GeneralConference;
 import com.ericrobertbrewer.lectern.scrape.app.model.GeneralConferenceAddress;
 import com.ericrobertbrewer.lectern.scrape.db.DatabaseUtils;
 import com.ericrobertbrewer.lectern.scrape.web.WebDriverManager;
+import com.ericrobertbrewer.lectern.scrape.web.WebUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
@@ -29,27 +30,27 @@ public class GeneralConferenceScraper implements AppScraper {
 
   @Override
   public void scrape(
-    WebDriverManager driverManager,
-    Connection connection,
-    File appFolder,
-    Logger logger
+      WebDriverManager driverManager,
+      Connection connection,
+      File appFolder,
+      Logger logger
   ) throws SQLException {
     DatabaseUtils.executeSql(connection, GeneralConference.CREATE_STMT);
     DatabaseUtils.executeSql(connection, GeneralConferenceAddress.CREATE_STMT);
 
     // Collect links to sessions and decades.
-    driverManager.getDriver().navigate()
-      .to("https://www.churchofjesuschrist.org/study/general-conference?lang=eng");
     final List<String> conferenceUrls = new ArrayList<>();
     final List<String> decadeUrls = new ArrayList<>();
-    final WebElement mainSection = driverManager.getDriver().findElement(By.id("main"));
+    final String conferencesUrl = "https://www.churchofjesuschrist.org/study/general-conference?lang=eng";
+    final WebElement mainSection =
+        driverManager.navigateAndFindElement(WebUtils.forbidChurchTesting(conferencesUrl), By.id("main"), 2);
     final List<WebElement> as = mainSection.findElements(By.tagName("a"));
     for (WebElement a : as) {
       final String url = a.getAttribute("href");
       final List<String> components = Arrays.asList(url.split("/"));
       final int gcIndex = components.indexOf("general-conference");
       if (gcIndex < 0 || gcIndex + 1 >= components.size() ||
-        !(components.get(gcIndex + 1).startsWith("2") || components.get(gcIndex + 1).startsWith("1"))) {
+          !(components.get(gcIndex + 1).startsWith("2") || components.get(gcIndex + 1).startsWith("1"))) {
         continue; // Skip speakers and topics.
       }
       final String yearComponent = components.get(gcIndex + 1);
@@ -63,10 +64,10 @@ public class GeneralConferenceScraper implements AppScraper {
     }
 
     // Collect links to conferences within decades.
-    for (String decadeHref : decadeUrls) {
-      logger.info("Navigating to decade: " + decadeHref);
-      driverManager.getDriver().navigate().to(decadeHref);
-      final WebElement decadeMainSection = driverManager.getDriver().findElement(By.id("main"));
+    for (String decadeUrl : decadeUrls) {
+      logger.info("Navigating to decade: " + decadeUrl);
+      final WebElement decadeMainSection =
+          driverManager.navigateAndFindElement(WebUtils.forbidChurchTesting(decadeUrl), By.id("main"), 2);
       final List<WebElement> decadeAs = decadeMainSection.findElements(By.tagName("a"));
       for (WebElement decadeA : decadeAs) {
         final String url = decadeA.getAttribute("href");
@@ -85,8 +86,8 @@ public class GeneralConferenceScraper implements AppScraper {
       }
       // Collect metadata.
       logger.info("Navigating to conference: " + conference + ", " + conferenceUrl);
-      driverManager.getDriver().navigate().to(conferenceUrl);
-      final WebElement conferenceMainArticle = driverManager.getDriver().findElement(By.id("main"));
+      final WebElement conferenceMainArticle =
+          driverManager.navigateAndFindElement(WebUtils.forbidChurchTesting(conferenceUrl), By.id("main"), 2);
       final WebElement manifestNav = conferenceMainArticle.findElement(By.className("manifest"));
       final WebElement sessionUl = manifestNav.findElement(By.tagName("ul"));
       final List<WebElement> sessionLis = sessionUl.findElements(By.xpath("./*"));

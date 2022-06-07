@@ -29,10 +29,10 @@ public class GeneralConferenceAddressScraper implements AppScraper {
 
   @Override
   public void scrape(
-    WebDriverManager driverManager,
-    Connection connection,
-    File appFolder,
-    Logger logger
+      WebDriverManager driverManager,
+      Connection connection,
+      File appFolder,
+      Logger logger
   ) throws SQLException {
     DatabaseUtils.executeSql(connection, GeneralConferenceAddressRef.CREATE_STMT);
 
@@ -50,16 +50,9 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       }
 
       logger.info("Scraping address: " + address.getPrimaryKey() + " " + address.getUrl());
-      // Forbid redirects to A/B testing as `https://abn.churchofjesuschrist.org/...`.
-      final String urlNoAbn = WebUtils.appendQuery(address.getUrl(), "mboxDisable", "1");
-      final By appBy = By.id("app");
-      final int retries = 2;
-      final WebElement appDiv;
-      try {
-        appDiv = WebUtils.navigateAndFindElement(driverManager, urlNoAbn, appBy, retries);
-      } catch (NoSuchElementException e) {
-        throw new RuntimeException("Unable to find element " + appBy + " after " + retries + " retries.", e);
-      }
+      final WebElement appDiv =
+          driverManager.navigateAndFindElement(WebUtils.forbidChurchTesting(address.getUrl()), By.id("app"), 2);
+      final WebDriver driver = driverManager.getDriver();
       final WebElement contentSection = appDiv.findElement(By.id("content"));
       final WebElement mainArticle = contentSection.findElement(By.id("main"));
       final WebElement bodyDiv = mainArticle.findElement(By.className("body"));
@@ -74,7 +67,7 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       // https://www.churchofjesuschrist.org/study/general-conference/1975/10/the-welfare-production-distribution-department?lang=eng
       final WebElement header = bodyDiv.findElement(By.tagName("header"));
       final WebElement titleH1 = WebUtils.findElement(header, new By[]{By.id("title1"), By.tagName("h1")});
-      escapeReferences(driverManager.getDriver(), titleH1, refsToLines, notesToLine, GeneralConferenceAddressRef.LINE_TITLE);
+      escapeReferences(driver, titleH1, refsToLines, notesToLine, GeneralConferenceAddressRef.LINE_TITLE);
 
       // Find speaker, role, and/or kicker.
       boolean updated = false;
@@ -156,11 +149,11 @@ public class GeneralConferenceAddressScraper implements AppScraper {
         // Yes, a reference can appear in the kicker and only in the kicker.
         // https://www.churchofjesuschrist.org/study/general-conference/2007/10/o-remember-remember?lang=eng
         final int escapedRefs = escapeReferences(
-          driverManager.getDriver(),
-          kickerP,
-          refsToLines,
-          notesToLine,
-          GeneralConferenceAddressRef.LINE_KICKER);
+            driver,
+            kickerP,
+            refsToLines,
+            notesToLine,
+            GeneralConferenceAddressRef.LINE_KICKER);
         final String text = TextUtils.removeEscapedReferenceMarkers(kickerP.getText().trim(), escapedRefs);
         address.setKicker(text);
         updated = true;
@@ -174,7 +167,7 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       // (Later videos include a transcript.)
       // https://www.churchofjesuschrist.org/study/general-conference/2020/10/33video?lang=eng
       if (bodyBlockDiv != null) {
-        appendTextLines(driverManager.getDriver(), bodyBlockDiv, textLines, refsToLines, notesToLine, logger);
+        appendTextLines(driver, bodyBlockDiv, textLines, refsToLines, notesToLine, logger);
       }
 
       // Collect references from notes footer.
@@ -182,7 +175,7 @@ public class GeneralConferenceAddressScraper implements AppScraper {
       // Most sustainings, audit reports, and statistical reports don't have any notes.
       final WebElement notesFooter = WebUtils.findElementOrNull(bodyDiv, By.tagName("footer"));
       if (notesFooter != null) {
-        WebUtils.setElementDisplay(driverManager.getDriver(), notesFooter, "block");
+        WebUtils.setElementDisplay(driver, notesFooter, "block");
         // Almost always a <ol>, but can be a <ul class="symbol">.
         // https://www.churchofjesuschrist.org/study/general-conference/1990/10/covenants
         final By[] bys = {By.tagName("ol"), By.tagName("ul")};
@@ -239,7 +232,7 @@ public class GeneralConferenceAddressScraper implements AppScraper {
           texts = null;
         }
         final GeneralConferenceAddressRef addressRef =
-          new GeneralConferenceAddressRef(address.getConference(), address.getOrdinal(), ref, lines, texts);
+            new GeneralConferenceAddressRef(address.getConference(), address.getOrdinal(), ref, lines, texts);
         addressRef.insertOrReplace(connection);
       }
 
@@ -251,7 +244,7 @@ public class GeneralConferenceAddressScraper implements AppScraper {
 
       // Write text file.
       try {
-        TextUtils.writeLines(textLines, textFile);
+        TextUtils.writeToFile(textLines, textFile);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -259,11 +252,11 @@ public class GeneralConferenceAddressScraper implements AppScraper {
   }
 
   private static int escapeReferences(
-    WebDriver driver,
-    WebElement element,
-    Map<String, List<Integer>> refsToLines,
-    Map<String, Integer> notesToLine,
-    int line
+      WebDriver driver,
+      WebElement element,
+      Map<String, List<Integer>> refsToLines,
+      Map<String, Integer> notesToLine,
+      int line
   ) {
     int escapedRefs = 0;
     final List<WebElement> as = element.findElements(By.tagName("a"));
@@ -276,12 +269,12 @@ public class GeneralConferenceAddressScraper implements AppScraper {
         notesToLine.put(aText, line);
         WebUtils.replaceElement(driver, a, "");
       } else if (
-        "scripture-ref".equals(className) ||
-          "cross-ref".equals(className) ||
-          // https://www.churchofjesuschrist.org/study/general-conference/2021/04/33nielsen?lang=eng
-          "[object Object]".equals(a.getAttribute("to")) ||
-          // https://www.churchofjesuschrist.org/study/general-conference/2022/04/24kearon?lang=eng
-          ref.startsWith("https://www.churchofjesuschrist.org/")
+          "scripture-ref".equals(className) ||
+              "cross-ref".equals(className) ||
+              // https://www.churchofjesuschrist.org/study/general-conference/2021/04/33nielsen?lang=eng
+              "[object Object]".equals(a.getAttribute("to")) ||
+              // https://www.churchofjesuschrist.org/study/general-conference/2022/04/24kearon?lang=eng
+              ref.startsWith("https://www.churchofjesuschrist.org/")
       ) {
         // Escape reference.
         if (!refsToLines.containsKey(ref)) {
@@ -298,12 +291,12 @@ public class GeneralConferenceAddressScraper implements AppScraper {
   }
 
   private static void appendTextLines(
-    WebDriver driver,
-    WebElement element,
-    List<String> lines,
-    Map<String, List<Integer>> refsToLines,
-    Map<String, Integer> notesToLine,
-    Logger logger
+      WebDriver driver,
+      WebElement element,
+      List<String> lines,
+      Map<String, List<Integer>> refsToLines,
+      Map<String, Integer> notesToLine,
+      Logger logger
   ) {
     final List<WebElement> children = element.findElements(By.xpath("./*"));
     if (children.size() == 0) {
@@ -336,6 +329,7 @@ public class GeneralConferenceAddressScraper implements AppScraper {
   }
 
   private static final Set<String> FORMATTING_TAGS = new HashSet<>();
+
   static {
     FORMATTING_TAGS.addAll(Arrays.asList("b", "i", "strong", "em", "a", "sup", "cite", "span", "sub", "u"));
     // <span> page break: https://www.churchofjesuschrist.org/study/general-conference/2021/10/11nelson?lang=eng
@@ -344,38 +338,40 @@ public class GeneralConferenceAddressScraper implements AppScraper {
   }
 
   private static final Set<String> IGNORE_TAGS = new HashSet<>();
+
   static {
     IGNORE_TAGS.addAll(Arrays.asList(
-      "img", "video", "noscript",
-      // Even though figures have a caption, they're short and not part of the monologue.
-      // https://www.churchofjesuschrist.org/study/general-conference/2014/10/joseph-smith?lang=eng
-      "figure",
-      // Inline videos come with controls.
-      // https://www.churchofjesuschrist.org/study/general-conference/2021/10/47nelson?lang=eng
-      "button", "svg", "label", "select",
-      // https://www.churchofjesuschrist.org/study/general-conference/1982/10/run-boy-run?lang=eng
-      "br"));
+        "img", "video", "noscript",
+        // Even though figures have a caption, they're short and not part of the monologue.
+        // https://www.churchofjesuschrist.org/study/general-conference/2014/10/joseph-smith?lang=eng
+        "figure",
+        // Inline videos come with controls.
+        // https://www.churchofjesuschrist.org/study/general-conference/2021/10/47nelson?lang=eng
+        "button", "svg", "label", "select",
+        // https://www.churchofjesuschrist.org/study/general-conference/1982/10/run-boy-run?lang=eng
+        "br"));
   }
 
   private static final Set<String> CONTENT_TAGS = new HashSet<>();
+
   static {
     CONTENT_TAGS.addAll(Arrays.asList(
-      "p",
-      // https://www.churchofjesuschrist.org/study/general-conference/2017/10/exceeding-great-and-precious-promises?lang=eng
-      "h2", "h3", "header",
-      // https://www.churchofjesuschrist.org/study/general-conference/2018/04/teaching-in-the-home-a-joyful-and-sacred-responsibility?lang=eng
-      "section",
-      "ul", "ol", "li",
-      // Tables can be included in statistical reports.
-      // https://www.churchofjesuschrist.org/study/general-conference/2017/04/statistical-report-2016?lang=eng
-      "table", "tbody", "tr", "td",
-      // Sometimes, a <div> contains indented poetry.
-      // https://www.churchofjesuschrist.org/study/general-conference/2018/04/small-and-simple-things?lang=eng
-      "div",
-      // Some talks have an annotation within a card.
-      // https://www.churchofjesuschrist.org/study/general-conference/2012/10/i-know-it-i-live-it-i-love-it?lang=eng
-      "aside",
-      // https://www.churchofjesuschrist.org/study/general-conference/1983/04/anonymous?lang=eng
-      "blockquote"));
+        "p",
+        // https://www.churchofjesuschrist.org/study/general-conference/2017/10/exceeding-great-and-precious-promises?lang=eng
+        "h2", "h3", "header",
+        // https://www.churchofjesuschrist.org/study/general-conference/2018/04/teaching-in-the-home-a-joyful-and-sacred-responsibility?lang=eng
+        "section",
+        "ul", "ol", "li",
+        // Tables can be included in statistical reports.
+        // https://www.churchofjesuschrist.org/study/general-conference/2017/04/statistical-report-2016?lang=eng
+        "table", "tbody", "tr", "td",
+        // Sometimes, a <div> contains indented poetry.
+        // https://www.churchofjesuschrist.org/study/general-conference/2018/04/small-and-simple-things?lang=eng
+        "div",
+        // Some talks have an annotation within a card.
+        // https://www.churchofjesuschrist.org/study/general-conference/2012/10/i-know-it-i-live-it-i-love-it?lang=eng
+        "aside",
+        // https://www.churchofjesuschrist.org/study/general-conference/1983/04/anonymous?lang=eng
+        "blockquote"));
   }
 }
