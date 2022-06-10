@@ -1,6 +1,6 @@
 package com.ericrobertbrewer.lectern.scrape.app.model;
 
-import com.ericrobertbrewer.lectern.scrape.Namespaces;
+import com.ericrobertbrewer.lectern.common.Namespaces;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

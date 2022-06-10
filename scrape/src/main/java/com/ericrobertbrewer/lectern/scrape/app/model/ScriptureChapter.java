@@ -1,7 +1,7 @@
 package com.ericrobertbrewer.lectern.scrape.app.model;
 
-import com.ericrobertbrewer.lectern.scrape.Namespaces;
-import com.ericrobertbrewer.lectern.scrape.db.DatabaseUtils;
+import com.ericrobertbrewer.lectern.common.Namespaces;
+import com.ericrobertbrewer.lectern.common.db.DatabaseUtils;
 
 import java.io.File;
 import java.sql.Connection;

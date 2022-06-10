@@ -1,9 +1,12 @@
 package com.ericrobertbrewer.lectern.scrape.app.model;
 
-import com.ericrobertbrewer.lectern.scrape.Namespaces;
-import com.ericrobertbrewer.lectern.scrape.db.DatabaseUtils;
+import com.ericrobertbrewer.lectern.common.Namespaces;
+import com.ericrobertbrewer.lectern.common.db.DatabaseUtils;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

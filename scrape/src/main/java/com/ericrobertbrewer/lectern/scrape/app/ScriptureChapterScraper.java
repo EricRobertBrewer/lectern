@@ -1,11 +1,11 @@
 package com.ericrobertbrewer.lectern.scrape.app;
 
+import com.ericrobertbrewer.lectern.common.Namespaces;
+import com.ericrobertbrewer.lectern.common.db.DatabaseUtils;
 import com.ericrobertbrewer.lectern.scrape.Launcher;
-import com.ericrobertbrewer.lectern.scrape.Namespaces;
 import com.ericrobertbrewer.lectern.scrape.app.model.ScriptureChapter;
 import com.ericrobertbrewer.lectern.scrape.app.model.ScriptureChapterRef;
 import com.ericrobertbrewer.lectern.scrape.app.model.ScriptureInfo;
-import com.ericrobertbrewer.lectern.scrape.db.DatabaseUtils;
 import com.ericrobertbrewer.lectern.scrape.text.TextUtils;
 import com.ericrobertbrewer.lectern.scrape.web.WebDriverManager;
 import com.ericrobertbrewer.lectern.scrape.web.WebUtils;
@@ -62,6 +62,24 @@ public class ScriptureChapterScraper implements AppScraper {
       }
     }
 
+    // Collect study help links.
+    for (String studyHelp : ScriptureInfo.STUDY_HELPS) {
+      final String studyHelpUrl = scripturesUrl + String.format("/%s?lang=eng", studyHelp);
+      logger.info("Collecting entries for study help: " + studyHelpUrl);
+      final WebElement appDiv =
+          driverManager.navigateAndFindElement(WebUtils.forbidChurchTesting(studyHelpUrl), By.id("app"), 2);
+      final WebElement contentSection = appDiv.findElement(By.id("content"));
+      final WebElement mainArticle = contentSection.findElement(By.id("main"));
+      final WebElement bodyDiv = mainArticle.findElement(By.className("body"));
+      final WebElement manifestNav = bodyDiv.findElement(By.tagName("nav"));
+      final List<WebElement> as = manifestNav.findElements(By.tagName("a"));
+      for (WebElement a : as) {
+        final String url = a.getAttribute("href");
+        chapterUrls.add(url);
+      }
+    }
+
+    // Scrape and persist content.
     for (String chapterUrl : chapterUrls) {
       final ScriptureChapter scriptureChapter = getScriptureChapter(chapterUrl);
       final File chapterFile = scriptureChapter.getChapterFile(appFolder);

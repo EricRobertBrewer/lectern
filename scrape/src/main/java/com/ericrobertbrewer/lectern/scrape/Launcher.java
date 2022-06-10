@@ -1,7 +1,8 @@
 package com.ericrobertbrewer.lectern.scrape;
 
+import com.ericrobertbrewer.lectern.common.Namespaces;
+import com.ericrobertbrewer.lectern.common.db.DatabaseUtils;
 import com.ericrobertbrewer.lectern.scrape.app.AppScraper;
-import com.ericrobertbrewer.lectern.scrape.db.DatabaseUtils;
 import com.ericrobertbrewer.lectern.scrape.web.WebDriverManager;
 
 import java.io.File;

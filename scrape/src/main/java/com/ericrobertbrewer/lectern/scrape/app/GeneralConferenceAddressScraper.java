@@ -1,10 +1,10 @@
 package com.ericrobertbrewer.lectern.scrape.app;
 
+import com.ericrobertbrewer.lectern.common.Namespaces;
+import com.ericrobertbrewer.lectern.common.db.DatabaseUtils;
 import com.ericrobertbrewer.lectern.scrape.Launcher;
-import com.ericrobertbrewer.lectern.scrape.Namespaces;
 import com.ericrobertbrewer.lectern.scrape.app.model.GeneralConferenceAddress;
 import com.ericrobertbrewer.lectern.scrape.app.model.GeneralConferenceAddressRef;
-import com.ericrobertbrewer.lectern.scrape.db.DatabaseUtils;
 import com.ericrobertbrewer.lectern.scrape.text.TextUtils;
 import com.ericrobertbrewer.lectern.scrape.web.WebDriverManager;
 import com.ericrobertbrewer.lectern.scrape.web.WebUtils;

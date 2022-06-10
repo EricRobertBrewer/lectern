@@ -1,6 +1,7 @@
 package com.ericrobertbrewer.lectern.scrape.app.model;
 
-import java.util.*;
+import java.util.Map;
+import java.util.Set;
 
 public final class ScriptureInfo {
 
